@@ -63,6 +63,8 @@ http://localhost:3000/r/shab-didar
 | `TELEGRAM_WEBHOOK_SECRET` | بخش غیرقابل حدس URL وب‌هوک | مقدار تصادفی |
 | `ALLOW_DEV_AUTH` | فقط پیش‌نمایش محلی | `false` در production |
 
+در Render، اگر `APP_URL` وارد نشود برنامه به‌صورت خودکار از `RENDER_EXTERNAL_URL` استفاده می‌کند.
+
 ## راه‌اندازی BotFather و Mini App
 
 1. در [@BotFather](https://t.me/BotFather) دستور `/newbot` را اجرا کنید، نام و username بدهید و `BOT_TOKEN` را ذخیره کنید.

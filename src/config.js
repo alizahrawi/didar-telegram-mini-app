@@ -8,7 +8,7 @@ function asBoolean(value, fallback = false) {
 
 export const config = {
   port: Number(process.env.PORT || 3000),
-  appUrl: (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, ''),
+  appUrl: (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000').replace(/\/$/, ''),
   botToken: process.env.BOT_TOKEN || '',
   botUsername: (process.env.BOT_USERNAME || '').replace(/^@/, ''),
   sessionSecret: process.env.SESSION_SECRET || 'dev-only-change-this-secret-immediately',
