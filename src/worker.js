@@ -149,7 +149,7 @@ async function saveMember(env, roomId, userId, input) {
 function inviteLinks(env, origin, slug) {
   const appUrl = (env.APP_URL || origin).replace(/\/$/, '');
   return {
-    webUrl: `${appUrl}/r/${encodeURIComponent(slug)}`,
+    webUrl: `${appUrl}/?room=${encodeURIComponent(slug)}`,
     inviteUrl: env.BOT_USERNAME ? `https://t.me/${env.BOT_USERNAME.replace(/^@/, '')}?startapp=${encodeURIComponent(slug)}` : `${appUrl}/r/${encodeURIComponent(slug)}`,
   };
 }
@@ -186,7 +186,7 @@ async function handleTelegram(request, env, origin, secret) {
   const create = message.text.match(/^\/newroom(?:@\w+)?(?:\s+(.+))?/s);
   if (start) {
     const slug = start[1] || '';
-    const target = slug ? `${origin}/r/${slug}` : origin;
+    const target = slug ? `${origin}/?room=${slug}` : origin;
     await telegramCall(env, 'sendMessage', { chat_id: message.chat.id, text: slug ? 'دعوت‌نامه آماده است؛ برای ورود به روم روی دکمه بزنید.' : 'به دیدار خوش آمدید؛ آدم‌های رویدادت را راحت‌تر پیدا کن.', reply_markup: { inline_keyboard: [[{ text: slug ? 'ورود به روم' : 'باز کردن دیدار', web_app: { url: target } }]] } });
   } else if (create) {
     const title = text(create[1], 70);
@@ -246,6 +246,8 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/health' || url.pathname.startsWith('/api/')) return api(request, env, url);
+    const legacyRoom = url.pathname.match(/^\/r\/([^/]+)$/);
+    if (legacyRoom) return Response.redirect(`${url.origin}/?room=${encodeURIComponent(decodeURIComponent(legacyRoom[1]))}`, 302);
     return env.ASSETS.fetch(request);
   },
 };

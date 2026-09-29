@@ -1,4 +1,4 @@
-const state = { token: '', user: null, room: null, slug: '', mobileChatOpen: false };
+const state = { token: '', user: null, room: null, slug: '', mobileChatOpen: false, staticMode: false };
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const palette = ['#845af0','#df6b9f','#398f92','#bd713f','#526fb1','#8f4c78','#497f61'];
@@ -27,7 +27,44 @@ async function api(path, options = {}) {
 function detectSlug() {
   const startParam = tg?.initDataUnsafe?.start_param || new URLSearchParams(location.search).get('tgWebAppStartParam');
   const match = location.pathname.match(/^\/r\/([^/]+)/);
-  return startParam || (match ? decodeURIComponent(match[1]) : '') || localStorage.getItem('didar:last-room') || '';
+  return startParam || new URLSearchParams(location.search).get('room') || (match ? decodeURIComponent(match[1]) : '') || localStorage.getItem('didar:last-room') || '';
+}
+
+function isStaticPreview() { return location.hostname.endsWith('github.io') || location.protocol === 'file:'; }
+
+function staticRoomKey(slug) { return `didar:static-room:${slug}`; }
+
+function defaultStaticRoom() {
+  const members = [
+    ['demo-2', 'سارا احمدی', 'مدیر مارکتینگ'],
+    ['demo-3', 'علی رضایی', 'بنیان‌گذار استارتاپ'],
+    ['demo-4', 'نازنین شریفی', 'استراتژیست برند'],
+    ['demo-5', 'امیر نوری', 'توسعه‌دهنده محصول'],
+  ].map(([user_id, display_name, role_title]) => ({ user_id, display_name, role_title, bio: '', avatar_url: '', instagram_url: 'https://instagram.com/', story_url: '', linkedin_url: 'https://linkedin.com/' }));
+  return {
+    id: 'static-shab-didar', slug: 'shab-didar', title: 'شب دیدار',
+    description: 'شب شبکه‌سازی، آشنایی و گفت‌وگو', members, me: null,
+  };
+}
+
+function loadStaticRoom(slug) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(staticRoomKey(slug)) || 'null');
+    if (saved) return saved;
+  } catch { /* use default */ }
+  return slug === 'shab-didar' ? defaultStaticRoom() : null;
+}
+
+function saveStaticRoom(room) { localStorage.setItem(staticRoomKey(room.slug), JSON.stringify(room)); }
+
+function enterStaticPreview() {
+  state.staticMode = true;
+  state.user = { id: 'demo-me', firstName: 'مهمان', lastName: 'دیدار', photoUrl: '' };
+  state.token = 'static-preview';
+  state.slug = detectSlug() || 'shab-didar';
+  $('#boot').classList.add('is-hidden'); $('#app').classList.remove('is-hidden');
+  showToast('نسخه نمایشی تلگرام فعال است');
+  loadRoom();
 }
 
 async function boot() {
@@ -40,6 +77,7 @@ async function boot() {
     if (auth.devMode) showToast('نسخه پیش‌نمایش محلی فعال است');
     if (state.slug) await loadRoom(); else showWelcome();
   } catch (error) {
+    if (isStaticPreview()) return enterStaticPreview();
     $('#boot h1').textContent = 'ورود انجام نشد';
     $('#boot p').textContent = error.message;
     $('.loader').classList.add('is-hidden');
@@ -48,9 +86,14 @@ async function boot() {
 
 async function loadRoom() {
   try {
-    state.room = await api(`/api/rooms/${encodeURIComponent(state.slug)}`);
+    if (state.staticMode) {
+      state.room = loadStaticRoom(state.slug);
+      if (!state.room) throw new Error('این روم نمایشی پیدا نشد.');
+      const shareUrl = new URL(location.href); shareUrl.search = ''; shareUrl.searchParams.set('room', state.slug);
+      state.room.inviteUrl = shareUrl.toString(); state.room.webUrl = shareUrl.toString();
+    } else state.room = await api(`/api/rooms/${encodeURIComponent(state.slug)}`);
     localStorage.setItem('didar:last-room', state.slug);
-    history.replaceState(null, '', `/r/${encodeURIComponent(state.slug)}`);
+    const pageUrl = new URL(location.href); pageUrl.searchParams.set('room', state.slug); history.replaceState(null, '', pageUrl);
     $('#welcomeView').classList.add('is-hidden'); $('#roomView').classList.remove('is-hidden');
     renderRoom();
   } catch (error) {
@@ -143,20 +186,31 @@ async function saveProfile(event) {
   const form = event.currentTarget; const submit = $('button[type=submit]', form); submit.disabled = true;
   const values = Object.fromEntries(new FormData(form));
   try {
-    await api(`/api/rooms/${encodeURIComponent(state.slug)}/me`, { method: 'PUT', body: JSON.stringify(values) });
+    if (state.staticMode) {
+      const member = { user_id: state.user.id, display_name: values.displayName, role_title: values.roleTitle, bio: values.bio, avatar_url: values.avatarUrl, instagram_url: values.instagramUrl, story_url: values.storyUrl, linkedin_url: values.linkedinUrl };
+      state.room.members = [...state.room.members.filter((item) => item.user_id !== state.user.id), member];
+      state.room.me = member; saveStaticRoom(state.room);
+    } else await api(`/api/rooms/${encodeURIComponent(state.slug)}/me`, { method: 'PUT', body: JSON.stringify(values) });
     closeModal('profileModal'); await loadRoom(); showToast('پروفایلت به روم اضافه شد');
   } catch (error) { $('#profileError').textContent = error.message; }
   finally { submit.disabled = false; }
 }
 
 async function refreshRoomQuietly() {
+  if (state.staticMode) return;
   try { state.room = await api(`/api/rooms/${encodeURIComponent(state.slug)}`); renderRoom(); } catch { /* retry on next event */ }
 }
 
 async function createRoom(event) {
   event.preventDefault(); const form = event.currentTarget; const button = $('button[type=submit]', form); button.disabled = true;
   try {
-    const room = await api('/api/rooms', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(form))) });
+    const input = Object.fromEntries(new FormData(form));
+    let room;
+    if (state.staticMode) {
+      const slug = `room-${Math.random().toString(16).slice(2, 10)}`;
+      room = { id: slug, slug, title: input.title, description: input.description, members: [], me: null };
+      saveStaticRoom(room);
+    } else room = await api('/api/rooms', { method: 'POST', body: JSON.stringify(input) });
     state.slug = room.slug; closeModal('createModal'); form.reset(); await loadRoom(); openProfile(false); showToast('روم ساخته شد؛ حالا پروفایلت را اضافه کن');
   } catch (error) { $('#roomError').textContent = error.message; }
   finally { button.disabled = false; }
