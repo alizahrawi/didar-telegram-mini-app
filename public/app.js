@@ -32,11 +32,11 @@ function detectSlug() {
 
 function isStaticPreview() { return location.hostname.endsWith('github.io') || ['localhost', '127.0.0.1'].includes(location.hostname) || location.protocol === 'file:'; }
 
-function staticRoomKey(slug) { return `didar:static-room:v2:${slug}`; }
+function staticRoomKey(slug) { return `didar:static-room:v3:${slug}`; }
 
 function defaultStaticRoom() {
   const members = [
-    ['demo-2', 'سارا احمدی', 'مدیر مارکتینگ', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=320&h=320&q=85'],
+    ['demo-2', 'سجاد کهریزی', 'مدیر مارکتینگ', 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=320&h=320&q=85'],
     ['demo-3', 'علی رضایی', 'بنیان‌گذار استارتاپ', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=320&h=320&q=85'],
     ['demo-4', 'نازنین شریفی', 'استراتژیست برند', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=320&h=320&q=85'],
     ['demo-5', 'امیر نوری', 'توسعه‌دهنده محصول', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=320&h=320&q=85'],
