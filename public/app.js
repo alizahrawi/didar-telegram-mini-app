@@ -30,17 +30,22 @@ function detectSlug() {
   return startParam || new URLSearchParams(location.search).get('room') || (match ? decodeURIComponent(match[1]) : '') || localStorage.getItem('didar:last-room') || '';
 }
 
-function isStaticPreview() { return location.hostname.endsWith('github.io') || location.protocol === 'file:'; }
+function isStaticPreview() { return location.hostname.endsWith('github.io') || ['localhost', '127.0.0.1'].includes(location.hostname) || location.protocol === 'file:'; }
 
-function staticRoomKey(slug) { return `didar:static-room:${slug}`; }
+function staticRoomKey(slug) { return `didar:static-room:v2:${slug}`; }
 
 function defaultStaticRoom() {
   const members = [
-    ['demo-2', 'سارا احمدی', 'مدیر مارکتینگ'],
-    ['demo-3', 'علی رضایی', 'بنیان‌گذار استارتاپ'],
-    ['demo-4', 'نازنین شریفی', 'استراتژیست برند'],
-    ['demo-5', 'امیر نوری', 'توسعه‌دهنده محصول'],
-  ].map(([user_id, display_name, role_title]) => ({ user_id, display_name, role_title, bio: '', avatar_url: '', instagram_url: 'https://instagram.com/', story_url: '', linkedin_url: 'https://linkedin.com/' }));
+    ['demo-2', 'سارا احمدی', 'مدیر مارکتینگ', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=320&h=320&q=85'],
+    ['demo-3', 'علی رضایی', 'بنیان‌گذار استارتاپ', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=320&h=320&q=85'],
+    ['demo-4', 'نازنین شریفی', 'استراتژیست برند', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=320&h=320&q=85'],
+    ['demo-5', 'امیر نوری', 'توسعه‌دهنده محصول', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=320&h=320&q=85'],
+    ['demo-6', 'مهسا کریمی', 'طراح تجربه کاربری', 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=320&h=320&q=85'],
+    ['demo-7', 'آرمان توسلی', 'سرمایه‌گذار و منتور', 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=320&h=320&q=85'],
+  ].map(([user_id, display_name, role_title, avatar_url]) => ({
+    user_id, display_name, role_title, avatar_url, bio: '',
+    instagram_url: 'https://www.instagram.com/', story_url: 'https://www.instagram.com/', linkedin_url: 'https://www.linkedin.com/',
+  }));
   return {
     id: 'static-shab-didar', slug: 'shab-didar', title: 'شب دیدار',
     description: 'شب شبکه‌سازی، آشنایی و گفت‌وگو', members, me: null,
@@ -58,23 +63,31 @@ function loadStaticRoom(slug) {
 function saveStaticRoom(room) { localStorage.setItem(staticRoomKey(room.slug), JSON.stringify(room)); }
 
 function enterStaticPreview() {
+  const telegramUser = tg?.initDataUnsafe?.user;
   state.staticMode = true;
-  state.user = { id: 'demo-me', firstName: 'مهمان', lastName: 'دیدار', photoUrl: '' };
+  state.user = telegramUser ? {
+    id: String(telegramUser.id),
+    firstName: telegramUser.first_name || 'مهمان',
+    lastName: telegramUser.last_name || '',
+    photoUrl: telegramUser.photo_url || '',
+  } : { id: 'demo-me', firstName: 'مهمان', lastName: 'دیدار', photoUrl: '' };
   state.token = 'static-preview';
   state.slug = detectSlug() || 'shab-didar';
   $('#boot').classList.add('is-hidden'); $('#app').classList.remove('is-hidden');
-  showToast('نسخه نمایشی تلگرام فعال است');
+  renderProfileNav();
   loadRoom();
 }
 
 async function boot() {
   try {
     tg?.ready(); tg?.expand(); tg?.setHeaderColor?.('#0d0b16'); tg?.setBackgroundColor?.('#0d0b16');
+    if (isStaticPreview()) return enterStaticPreview();
     const auth = await api('/api/auth', { method: 'POST', body: JSON.stringify({ initData: tg?.initData || '' }) });
     state.token = auth.token; state.user = auth.user; state.slug = detectSlug();
     if (!state.slug && auth.devMode) state.slug = 'shab-didar';
     $('#boot').classList.add('is-hidden'); $('#app').classList.remove('is-hidden');
     if (auth.devMode) showToast('نسخه پیش‌نمایش محلی فعال است');
+    renderProfileNav();
     if (state.slug) await loadRoom(); else showWelcome();
   } catch (error) {
     if (isStaticPreview()) return enterStaticPreview();
@@ -115,6 +128,32 @@ function renderRoom() {
   const grid = $('#membersGrid'); grid.replaceChildren();
   room.members.forEach((member) => grid.append(memberCard(member)));
   grid.append(addCard());
+  renderProfileNav();
+}
+
+function renderProfileNav() {
+  const target = $('#profileNavAvatar');
+  if (!target || !state.user) return;
+  const member = state.room?.me;
+  const name = member?.display_name || `${state.user.firstName || ''} ${state.user.lastName || ''}`.trim() || 'کاربر دیدار';
+  const photoUrl = member?.avatar_url || state.user.photoUrl || '';
+  target.replaceChildren();
+  target.style.setProperty('--avatar', colorFor(name));
+  if (photoUrl) {
+    const image = new Image();
+    image.alt = '';
+    image.referrerPolicy = 'no-referrer';
+    image.src = photoUrl;
+    image.addEventListener('error', () => {
+      target.replaceChildren(document.createTextNode(initials(name)));
+      target.classList.remove('has-photo');
+    });
+    target.append(image);
+    target.classList.add('has-photo');
+  } else {
+    target.textContent = initials(name);
+    target.classList.remove('has-photo');
+  }
 }
 
 function avatarNode(member, className = 'avatar') {
@@ -187,7 +226,7 @@ async function saveProfile(event) {
   const values = Object.fromEntries(new FormData(form));
   try {
     if (state.staticMode) {
-      const member = { user_id: state.user.id, display_name: values.displayName, role_title: values.roleTitle, bio: values.bio, avatar_url: values.avatarUrl, instagram_url: values.instagramUrl, story_url: values.storyUrl, linkedin_url: values.linkedinUrl };
+      const member = { user_id: state.user.id, display_name: values.displayName, role_title: values.roleTitle, bio: values.bio, avatar_url: values.avatarUrl || state.user.photoUrl || '', instagram_url: values.instagramUrl, story_url: values.storyUrl, linkedin_url: values.linkedinUrl };
       state.room.members = [...state.room.members.filter((item) => item.user_id !== state.user.id), member];
       state.room.me = member; saveStaticRoom(state.room);
     } else await api(`/api/rooms/${encodeURIComponent(state.slug)}/me`, { method: 'PUT', body: JSON.stringify(values) });
