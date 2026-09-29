@@ -1,9 +1,9 @@
 {
-  "name": "didar-telegram-mini-app",
+  "name": "diiidar-telegram-mini-app",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "دیدار — serverless Telegram Mini App on Cloudflare Workers and D1",
+  "description": "دیدااار (Diiidar) — serverless Telegram Mini App on Cloudflare Workers and D1",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",

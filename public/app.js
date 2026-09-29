@@ -32,7 +32,7 @@ function detectSlug() {
 
 function isStaticPreview() { return location.hostname.endsWith('github.io') || ['localhost', '127.0.0.1'].includes(location.hostname) || location.protocol === 'file:'; }
 
-function staticRoomKey(slug) { return `didar:static-room:v3:${slug}`; }
+function staticRoomKey(slug) { return `didar:static-room:v4:${slug}`; }
 
 function defaultStaticRoom() {
   const members = [
@@ -47,7 +47,7 @@ function defaultStaticRoom() {
     instagram_url: 'https://www.instagram.com/', story_url: 'https://www.instagram.com/', linkedin_url: 'https://www.linkedin.com/',
   }));
   return {
-    id: 'static-shab-didar', slug: 'shab-didar', title: 'شب دیدار',
+    id: 'static-shab-didar', slug: 'shab-didar', title: 'شب دیدااار',
     description: 'شب شبکه‌سازی، آشنایی و گفت‌وگو', members, me: null,
   };
 }
@@ -70,7 +70,7 @@ function enterStaticPreview() {
     firstName: telegramUser.first_name || 'مهمان',
     lastName: telegramUser.last_name || '',
     photoUrl: telegramUser.photo_url || '',
-  } : { id: 'demo-me', firstName: 'مهمان', lastName: 'دیدار', photoUrl: '' };
+  } : { id: 'demo-me', firstName: 'مهمان', lastName: 'دیدااار', photoUrl: '' };
   state.token = 'static-preview';
   state.slug = detectSlug() || 'shab-didar';
   $('#boot').classList.add('is-hidden'); $('#app').classList.remove('is-hidden');
@@ -135,7 +135,7 @@ function renderProfileNav() {
   const target = $('#profileNavAvatar');
   if (!target || !state.user) return;
   const member = state.room?.me;
-  const name = member?.display_name || `${state.user.firstName || ''} ${state.user.lastName || ''}`.trim() || 'کاربر دیدار';
+  const name = member?.display_name || `${state.user.firstName || ''} ${state.user.lastName || ''}`.trim() || 'کاربر دیدااار';
   const photoUrl = member?.avatar_url || state.user.photoUrl || '';
   target.replaceChildren();
   target.style.setProperty('--avatar', colorFor(name));
@@ -257,7 +257,7 @@ async function createRoom(event) {
 
 async function shareRoom() {
   if (!state.room) return;
-  const data = { title: `دعوت به ${state.room.title}`, text: `به روم «${state.room.title}» در دیدار بیا`, url: state.room.inviteUrl };
+  const data = { title: `دعوت به ${state.room.title}`, text: `به روم «${state.room.title}» در دیدااار بیا`, url: state.room.inviteUrl };
   try {
     if (navigator.share) await navigator.share(data);
     else { await navigator.clipboard.writeText(state.room.inviteUrl); showToast('لینک دعوت کپی شد'); }

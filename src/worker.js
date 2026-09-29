@@ -163,11 +163,11 @@ async function ensureDevRoom(env, user) {
   if (env.ALLOW_DEV_AUTH !== 'true') return;
   let room = await env.DB.prepare("SELECT * FROM rooms WHERE slug='shab-didar'").first();
   if (!room) {
-    room = { id: crypto.randomUUID(), slug: 'shab-didar', title: 'شب دیدار', description: 'شب شبکه‌سازی، آشنایی و گفت‌وگو' };
+    room = { id: crypto.randomUUID(), slug: 'shab-didar', title: 'شب دیدااار', description: 'شب شبکه‌سازی، آشنایی و گفت‌وگو' };
     await env.DB.prepare('INSERT INTO rooms (id,slug,title,description,host_user_id) VALUES (?,?,?,?,?)').bind(room.id, room.slug, room.title, room.description, user.id).run();
   }
   const member = await env.DB.prepare('SELECT 1 FROM members WHERE room_id=? AND user_id=?').bind(room.id, user.id).first();
-  if (!member) await saveMember(env, room.id, user.id, { displayName: `${user.first_name} ${user.last_name}`.trim(), roleTitle: 'عضو دیدار' });
+  if (!member) await saveMember(env, room.id, user.id, { displayName: `${user.first_name} ${user.last_name}`.trim(), roleTitle: 'عضو دیدااار' });
 }
 
 async function telegramCall(env, method, payload) {
@@ -187,11 +187,11 @@ async function handleTelegram(request, env, origin, secret) {
   if (start) {
     const slug = start[1] || '';
     const target = slug ? `${origin}/?room=${slug}` : origin;
-    await telegramCall(env, 'sendMessage', { chat_id: message.chat.id, text: slug ? 'دعوت‌نامه آماده است؛ برای ورود به روم روی دکمه بزنید.' : 'به دیدار خوش آمدید؛ آدم‌های رویدادت را راحت‌تر پیدا کن.', reply_markup: { inline_keyboard: [[{ text: slug ? 'ورود به روم' : 'باز کردن دیدار', web_app: { url: target } }]] } });
+    await telegramCall(env, 'sendMessage', { chat_id: message.chat.id, text: slug ? 'دعوت‌نامه آماده است؛ برای ورود به روم روی دکمه بزنید.' : 'به دیدااار خوش آمدید؛ آدم‌های رویدادت را راحت‌تر پیدا کن.', reply_markup: { inline_keyboard: [[{ text: slug ? 'ورود به روم' : 'باز کردن دیدااار', web_app: { url: target } }]] } });
   } else if (create) {
     const title = text(create[1], 70);
     if (title.length < 2) {
-      await telegramCall(env, 'sendMessage', { chat_id: message.chat.id, text: 'مثال ساخت روم:\n/newroom شب دیدار' });
+      await telegramCall(env, 'sendMessage', { chat_id: message.chat.id, text: 'مثال ساخت روم:\n/newroom شب دیدااار' });
     } else {
       const user = await upsertUser(env, { telegramId: String(message.from.id), firstName: message.from.first_name, lastName: message.from.last_name || '', username: message.from.username || '', photoUrl: '' });
       const room = await createRoom(env, { title, hostUserId: user.id });
@@ -204,14 +204,14 @@ async function handleTelegram(request, env, origin, secret) {
 
 async function api(request, env, url) {
   const path = url.pathname;
-  if (path === '/health') return json({ ok: true, service: 'didar-worker', time: new Date().toISOString() });
+  if (path === '/health') return json({ ok: true, service: 'diiidar-worker', time: new Date().toISOString() });
   if (path === '/api/config') return json({ botUsername: env.BOT_USERNAME || '', allowDevAuth: env.ALLOW_DEV_AUTH === 'true', chatStatus: 'coming_soon' });
   if (request.method === 'POST' && path === '/api/auth') {
     try {
       const body = await request.json();
       let profile;
       if (body.initData) profile = await validateTelegramInitData(body.initData, env.BOT_TOKEN);
-      else if (env.ALLOW_DEV_AUTH === 'true') profile = { telegramId: String(body.devUser?.telegramId || 'dev-1001'), firstName: text(body.devUser?.firstName || 'زهرا', 50), lastName: text(body.devUser?.lastName || 'محمدی', 50), username: 'didar_preview', photoUrl: '' };
+      else if (env.ALLOW_DEV_AUTH === 'true') profile = { telegramId: String(body.devUser?.telegramId || 'dev-1001'), firstName: text(body.devUser?.firstName || 'زهرا', 50), lastName: text(body.devUser?.lastName || 'محمدی', 50), username: 'diiidar_preview', photoUrl: '' };
       else return json({ error: 'این صفحه را داخل تلگرام باز کنید.' }, 401);
       const user = await upsertUser(env, profile);
       await ensureDevRoom(env, user);

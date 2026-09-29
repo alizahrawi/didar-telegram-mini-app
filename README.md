@@ -1,6 +1,6 @@
-# دیدار — Telegram Mini App سرورلس
+# دیدااار (Diiidar) — Telegram Mini App سرورلس
 
-«دیدار» یک Mini App فارسی برای رویدادها و مهمانی‌های کاری است. هر رویداد یک Room و لینک دعوت دارد؛ مهمان‌ها با هویت تلگرام وارد می‌شوند، پروفایل و لینک‌های اجتماعی خود را اضافه می‌کنند و افراد حاضر را می‌بینند.
+«دیدااار» یا **Diiidar** یک Mini App فارسی برای رویدادها و مهمانی‌های کاری است. هر رویداد یک Room و لینک دعوت دارد؛ مهمان‌ها با هویت تلگرام وارد می‌شوند، پروفایل و لینک‌های اجتماعی خود را اضافه می‌کنند و افراد حاضر را می‌بینند.
 
 ## وضعیت MVP
 
@@ -83,7 +83,7 @@ npm run deploy
 خروجی، آدرسی شبیه زیر خواهد بود:
 
 ```text
-https://didar-mini-app.YOUR_SUBDOMAIN.workers.dev
+https://diiidar-mini-app.YOUR_SUBDOMAIN.workers.dev
 ```
 
 اگر دامنه اختصاصی ندارید همان `workers.dev` برای Telegram Mini App قابل استفاده است.
@@ -101,8 +101,8 @@ npm run bot:setup
 در [@BotFather](https://t.me/BotFather):
 
 1. از **Bot Settings → Configure Mini App**، آدرس `workers.dev` را به‌عنوان Main Mini App ثبت کنید.
-2. اگر short name خواسته شد، `didar` را انتخاب کنید.
-3. برای تست `/start` و برای ساخت Room دستور `/newroom شب دیدار` را بفرستید.
+2. اگر short name خواسته شد، `diiidar` را انتخاب کنید.
+3. برای تست `/start` و برای ساخت Room دستور `/newroom شب دیدااار` را بفرستید.
 
 ## متغیرهای Worker
 
@@ -110,14 +110,14 @@ npm run bot:setup
 |---|---|---|
 | `BOT_TOKEN` | Secret | توکن بات |
 | `BOT_USERNAME` | Secret | username بات بدون `@` |
-| `SESSION_SECRET` | Secret | امضای نشست‌های دیدار |
+| `SESSION_SECRET` | Secret | امضای نشست‌های دیدااار |
 | `TELEGRAM_WEBHOOK_SECRET` | Secret | محافظت از مسیر webhook |
 | `APP_URL` | اختیاری | دامنه اختصاصی؛ در حالت عادی origin خود Worker استفاده می‌شود |
 | `ALLOW_DEV_AUTH` | عادی | فقط توسعه محلی؛ production برابر `false` |
 
 ## محدودیت Instagram Story
 
-Instagram اجازه دریافت خودکار Story همه کاربران را صرفاً با username نمی‌دهد و Story نیز معمولاً موقت است. در MVP کاربر لینک Profile یا Story را خودش وارد می‌کند. دیدار لینک را ذخیره و با لمس تصویر در Instagram باز می‌کند؛ هیچ scraping انجام نمی‌شود.
+Instagram اجازه دریافت خودکار Story همه کاربران را صرفاً با username نمی‌دهد و Story نیز معمولاً موقت است. در MVP کاربر لینک Profile یا Story را خودش وارد می‌کند. دیدااار لینک را ذخیره و با لمس تصویر در Instagram باز می‌کند؛ هیچ scraping انجام نمی‌شود.
 
 ## چت
 

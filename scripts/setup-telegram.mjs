@@ -30,12 +30,12 @@ async function call(method, body) {
 }
 
 await call('setMyCommands', { commands: [
-  { command: 'start', description: 'باز کردن دیدار' },
+  { command: 'start', description: 'باز کردن دیدااار' },
   { command: 'newroom', description: 'ساخت روم جدید' },
   { command: 'help', description: 'راهنما' },
 ] });
 await call('setChatMenuButton', {
-  menu_button: { type: 'web_app', text: 'باز کردن دیدار', web_app: { url: appUrl } },
+  menu_button: { type: 'web_app', text: 'باز کردن دیدااار', web_app: { url: appUrl } },
 });
 
 if (mode === 'webhook') {

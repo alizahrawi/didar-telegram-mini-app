@@ -35,5 +35,5 @@ test('creates and verifies a signed session token', async () => {
 
 test('creates Telegram-safe room slugs', () => {
   assert.equal(slugify('Demo Room'), 'demo-room');
-  assert.match(slugify('شب دیدار'), /^room-[a-f0-9-]{8}$/);
+  assert.match(slugify('شب دیدااار'), /^room-[a-f0-9-]{8}$/);
 });
