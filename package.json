@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "دیدااار (Diiidar) — serverless Telegram Mini App on Cloudflare Workers and D1",
+  "description": "Diiidar — a serverless Telegram Mini App for human-centered event networking",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:migrate": "wrangler d1 migrations apply didar-db --remote",
-    "db:migrate:local": "wrangler d1 migrations apply didar-db --local",
+    "db:migrate": "wrangler d1 migrations apply diiidar-db --remote",
+    "db:migrate:local": "wrangler d1 migrations apply diiidar-db --local",
+    "security:check": "node scripts/security-check.mjs",
     "test": "node --test",
     "bot:setup": "node scripts/setup-telegram.mjs"
   },

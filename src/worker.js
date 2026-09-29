@@ -9,6 +9,7 @@ function json(data, status = 200) {
       'cache-control': 'no-store',
       'x-content-type-options': 'nosniff',
       'referrer-policy': 'strict-origin-when-cross-origin',
+      'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
     },
   });
 }
@@ -32,18 +33,25 @@ async function hmac(key, value) {
 
 function hex(bytes) { return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join(''); }
 function safeEqual(left, right) {
+  if (typeof left !== 'string' || typeof right !== 'string') return false;
   if (left.length !== right.length) return false;
   let result = 0;
   for (let i = 0; i < left.length; i += 1) result |= left.charCodeAt(i) ^ right.charCodeAt(i);
   return result === 0;
 }
 
+function requireStrongSecret(secret, label, minimum = 32) {
+  if (typeof secret !== 'string' || secret.length < minimum) throw new Error(`${label} must contain at least ${minimum} characters.`);
+  return secret;
+}
+
 export async function validateTelegramInitData(initData, botToken, nowSeconds = Math.floor(Date.now() / 1000)) {
   if (!initData || !botToken) throw new Error('Telegram authentication is unavailable.');
+  if (typeof initData !== 'string' || initData.length > 16_384) throw new Error('Telegram init data is invalid.');
   const params = new URLSearchParams(initData);
   const receivedHash = params.get('hash');
   const authDate = Number(params.get('auth_date'));
-  if (!receivedHash || !authDate) throw new Error('Telegram init data is incomplete.');
+  if (!receivedHash || !/^[a-f0-9]{64}$/i.test(receivedHash) || !Number.isInteger(authDate)) throw new Error('Telegram init data is incomplete.');
   if (nowSeconds - authDate > 86400 || authDate > nowSeconds + 60) throw new Error('Telegram init data has expired.');
   params.delete('hash');
   const check = [...params.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => `${key}=${value}`).join('\n');
@@ -52,21 +60,24 @@ export async function validateTelegramInitData(initData, botToken, nowSeconds = 
   if (!safeEqual(calculated, receivedHash)) throw new Error('Telegram signature is invalid.');
   let user;
   try { user = JSON.parse(params.get('user') || 'null'); } catch { throw new Error('Telegram user payload is invalid.'); }
-  if (!user?.id || !user?.first_name) throw new Error('Telegram user payload is missing.');
+  if (!user?.id || !/^\d{1,20}$/.test(String(user.id)) || !user?.first_name) throw new Error('Telegram user payload is missing.');
   return {
-    telegramId: String(user.id), firstName: user.first_name, lastName: user.last_name || '',
-    username: user.username || '', photoUrl: user.photo_url || '', languageCode: user.language_code || 'fa',
+    telegramId: String(user.id), firstName: text(user.first_name, 64), lastName: text(user.last_name, 64),
+    username: text(user.username, 64), photoUrl: validUrl(user.photo_url), languageCode: text(user.language_code, 16) || 'fa',
   };
 }
 
 export async function createSessionToken(user, secret, ttlSeconds = 604800) {
+  requireStrongSecret(secret, 'SESSION_SECRET');
   const body = base64url(encoder.encode(JSON.stringify({ sub: user.id, tid: user.telegram_id, exp: Math.floor(Date.now() / 1000) + ttlSeconds })));
   return `${body}.${base64url(await hmac(secret, body))}`;
 }
 
 export async function verifySessionToken(token, secret) {
-  if (!token || !token.includes('.')) throw new Error('Missing session.');
-  const [body, signature] = token.split('.');
+  requireStrongSecret(secret, 'SESSION_SECRET');
+  const parts = typeof token === 'string' ? token.split('.') : [];
+  if (parts.length !== 2 || !parts[0] || !parts[1]) throw new Error('Missing session.');
+  const [body, signature] = parts;
   const expected = base64url(await hmac(secret, body));
   if (!safeEqual(expected, signature)) throw new Error('Invalid session.');
   const payload = JSON.parse(decoder.decode(fromBase64url(body)));
@@ -81,10 +92,12 @@ export function slugify(value) {
 }
 
 function text(value, max) { return String(value || '').trim().slice(0, max); }
-function validUrl(value, domains = []) {
+export function validUrl(value, domains = []) {
   if (!value) return '';
-  const url = new URL(value);
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error('لینک معتبر وارد کنید.');
+  let url;
+  try { url = new URL(value); } catch { throw new Error('لینک معتبر وارد کنید.'); }
+  if (url.protocol !== 'https:') throw new Error('لینک باید با HTTPS شروع شود.');
+  if (url.username || url.password) throw new Error('لینک معتبر وارد کنید.');
   const host = url.hostname.replace(/^www\./, '').toLowerCase();
   if (domains.length && !domains.some((domain) => host === domain || host.endsWith(`.${domain}`))) throw new Error('دامنه لینک معتبر نیست.');
   return url.toString().slice(0, 500);
@@ -177,7 +190,8 @@ async function telegramCall(env, method, payload) {
   });
 }
 
-async function handleTelegram(request, env, origin, secret) {
+async function handleTelegram(request, env, origin) {
+  const secret = request.headers.get('x-telegram-bot-api-secret-token') || '';
   if (!env.BOT_TOKEN || !env.TELEGRAM_WEBHOOK_SECRET || !safeEqual(secret, env.TELEGRAM_WEBHOOK_SECRET)) return json({ error: 'Not found' }, 404);
   const update = await request.json();
   const message = update.message;
@@ -218,8 +232,7 @@ async function api(request, env, url) {
       return json({ token: await createSessionToken(user, env.SESSION_SECRET), user: { id: user.id, firstName: user.first_name, lastName: user.last_name, photoUrl: user.photo_url }, botUsername: env.BOT_USERNAME || '', devMode: env.ALLOW_DEV_AUTH === 'true' && !body.initData });
     } catch (error) { return json({ error: error.message || 'ورود ناموفق بود.' }, 401); }
   }
-  const webhook = path.match(/^\/api\/telegram\/webhook\/([^/]+)$/);
-  if (request.method === 'POST' && webhook) return handleTelegram(request, env, url.origin, decodeURIComponent(webhook[1]));
+  if (request.method === 'POST' && path === '/api/telegram/webhook') return handleTelegram(request, env, url.origin);
   let auth;
   try { auth = await requireAuth(request, env); } catch { return json({ error: 'برای ادامه دوباره از تلگرام وارد شوید.' }, 401); }
   if (request.method === 'POST' && path === '/api/rooms') {

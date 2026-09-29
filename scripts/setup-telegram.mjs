@@ -13,8 +13,8 @@ if (!appUrl.startsWith('https://')) {
   console.error('APP_URL must be a public HTTPS URL for Telegram.');
   process.exit(1);
 }
-if (mode === 'webhook' && secret.length < 12) {
-  console.error('TELEGRAM_WEBHOOK_SECRET must contain at least 12 characters.');
+if (mode === 'webhook' && !/^[A-Za-z0-9_-]{12,256}$/.test(secret)) {
+  console.error('TELEGRAM_WEBHOOK_SECRET must contain 12–256 letters, numbers, underscores, or hyphens.');
   process.exit(1);
 }
 
@@ -40,7 +40,8 @@ await call('setChatMenuButton', {
 
 if (mode === 'webhook') {
   await call('setWebhook', {
-    url: `${appUrl}/api/telegram/webhook/${secret}`,
+    url: `${appUrl}/api/telegram/webhook`,
+    secret_token: secret,
     allowed_updates: ['message'],
     drop_pending_updates: false,
   });

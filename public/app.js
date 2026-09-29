@@ -11,7 +11,21 @@ function faNumber(value) { return Number(value).toLocaleString('fa-IR'); }
 function colorFor(value = '') { return palette[[...value].reduce((n, c) => n + c.charCodeAt(0), 0) % palette.length]; }
 function timeLabel(date) { return new Date(`${date.replace(' ', 'T')}Z`).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }); }
 function el(tag, className, text) { const node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = text; return node; }
-function openExternal(url) { if (!url) return; if (tg?.openLink) tg.openLink(url); else window.open(url, '_blank', 'noopener,noreferrer'); }
+function safeExternalUrl(value, domains = []) {
+  if (!value) return '';
+  const url = new URL(value);
+  if (url.protocol !== 'https:' || url.username || url.password) throw new Error('لینک باید معتبر و با HTTPS شروع شود.');
+  const host = url.hostname.replace(/^www\./, '').toLowerCase();
+  if (domains.length && !domains.some((domain) => host === domain || host.endsWith(`.${domain}`))) throw new Error('دامنه لینک معتبر نیست.');
+  return url.toString().slice(0, 500);
+}
+function openExternal(value) {
+  if (!value) return;
+  try {
+    const url = safeExternalUrl(value);
+    if (tg?.openLink) tg.openLink(url); else window.open(url, '_blank', 'noopener,noreferrer');
+  } catch (error) { showToast(error.message, true); }
+}
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -140,16 +154,21 @@ function renderProfileNav() {
   target.replaceChildren();
   target.style.setProperty('--avatar', colorFor(name));
   if (photoUrl) {
-    const image = new Image();
-    image.alt = '';
-    image.referrerPolicy = 'no-referrer';
-    image.src = photoUrl;
-    image.addEventListener('error', () => {
+    try {
+      const image = new Image();
+      image.alt = '';
+      image.referrerPolicy = 'no-referrer';
+      image.src = safeExternalUrl(photoUrl);
+      image.addEventListener('error', () => {
+        target.replaceChildren(document.createTextNode(initials(name)));
+        target.classList.remove('has-photo');
+      });
+      target.append(image);
+      target.classList.add('has-photo');
+    } catch {
       target.replaceChildren(document.createTextNode(initials(name)));
       target.classList.remove('has-photo');
-    });
-    target.append(image);
-    target.classList.add('has-photo');
+    }
   } else {
     target.textContent = initials(name);
     target.classList.remove('has-photo');
@@ -160,9 +179,11 @@ function avatarNode(member, className = 'avatar') {
   const node = el('span', className);
   node.style.setProperty('--avatar', colorFor(member.display_name));
   if (member.avatar_url) {
-    const image = new Image(); image.alt = ''; image.referrerPolicy = 'no-referrer'; image.src = member.avatar_url;
-    image.addEventListener('error', () => image.replaceWith(document.createTextNode(initials(member.display_name))));
-    node.append(image);
+    try {
+      const image = new Image(); image.alt = ''; image.referrerPolicy = 'no-referrer'; image.src = safeExternalUrl(member.avatar_url);
+      image.addEventListener('error', () => image.replaceWith(document.createTextNode(initials(member.display_name))));
+      node.append(image);
+    } catch { node.textContent = initials(member.display_name); }
   } else node.textContent = initials(member.display_name);
   return node;
 }
@@ -225,6 +246,10 @@ async function saveProfile(event) {
   const form = event.currentTarget; const submit = $('button[type=submit]', form); submit.disabled = true;
   const values = Object.fromEntries(new FormData(form));
   try {
+    values.avatarUrl = safeExternalUrl(values.avatarUrl);
+    values.instagramUrl = safeExternalUrl(values.instagramUrl, ['instagram.com']);
+    values.storyUrl = safeExternalUrl(values.storyUrl, ['instagram.com']);
+    values.linkedinUrl = safeExternalUrl(values.linkedinUrl, ['linkedin.com', 'lnkd.in']);
     if (state.staticMode) {
       const member = { user_id: state.user.id, display_name: values.displayName, role_title: values.roleTitle, bio: values.bio, avatar_url: values.avatarUrl || state.user.photoUrl || '', instagram_url: values.instagramUrl, story_url: values.storyUrl, linkedin_url: values.linkedinUrl };
       state.room.members = [...state.room.members.filter((item) => item.user_id !== state.user.id), member];

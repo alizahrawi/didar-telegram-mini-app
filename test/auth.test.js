@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { createSessionToken, slugify, validateTelegramInitData, verifySessionToken } from '../src/worker.js';
+import worker, { createSessionToken, slugify, validUrl, validateTelegramInitData, verifySessionToken } from '../src/worker.js';
 
 function signedInitData(botToken, user, authDate) {
   const values = new URLSearchParams({ auth_date: String(authDate), query_id: 'AAExample', user: JSON.stringify(user) });
@@ -31,9 +31,29 @@ test('creates and verifies a signed session token', async () => {
   const token = await createSessionToken({ id: 'user-1', telegram_id: '42' }, 'a'.repeat(32));
   assert.equal((await verifySessionToken(token, 'a'.repeat(32))).sub, 'user-1');
   await assert.rejects(() => verifySessionToken(`${token}x`, 'a'.repeat(32)));
+  await assert.rejects(() => verifySessionToken(`${token}.extra`, 'a'.repeat(32)));
+  await assert.rejects(() => createSessionToken({ id: 'user-1', telegram_id: '42' }, 'short'));
 });
 
 test('creates Telegram-safe room slugs', () => {
   assert.equal(slugify('Demo Room'), 'demo-room');
   assert.match(slugify('شب دیدااار'), /^room-[a-f0-9-]{8}$/);
+});
+
+test('accepts only safe HTTPS social links', () => {
+  assert.equal(validUrl('https://instagram.com/diiidar', ['instagram.com']), 'https://instagram.com/diiidar');
+  assert.throws(() => validUrl('http://instagram.com/diiidar', ['instagram.com']), /HTTPS/);
+  assert.throws(() => validUrl('https://instagram.com.example.org/diiidar', ['instagram.com']), /دامنه/);
+  assert.throws(() => validUrl('https://user:password@instagram.com/diiidar', ['instagram.com']), /معتبر/);
+});
+
+test('requires the Telegram webhook secret header', async () => {
+  const env = { BOT_TOKEN: 'test-token', TELEGRAM_WEBHOOK_SECRET: 'strong_webhook_secret' };
+  const rejected = await worker.fetch(new Request('https://example.com/api/telegram/webhook', { method: 'POST', body: '{}' }), env);
+  assert.equal(rejected.status, 404);
+
+  const accepted = await worker.fetch(new Request('https://example.com/api/telegram/webhook', {
+    method: 'POST', body: '{}', headers: { 'x-telegram-bot-api-secret-token': env.TELEGRAM_WEBHOOK_SECRET },
+  }), env);
+  assert.equal(accepted.status, 200);
 });
