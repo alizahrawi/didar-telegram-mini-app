@@ -1,4 +1,4 @@
-const state = { token: '', user: null, room: null, slug: '', socket: null, mobileChatOpen: false };
+const state = { token: '', user: null, room: null, slug: '', mobileChatOpen: false };
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const palette = ['#845af0','#df6b9f','#398f92','#bd713f','#526fb1','#8f4c78','#497f61'];
@@ -52,7 +52,7 @@ async function loadRoom() {
     localStorage.setItem('didar:last-room', state.slug);
     history.replaceState(null, '', `/r/${encodeURIComponent(state.slug)}`);
     $('#welcomeView').classList.add('is-hidden'); $('#roomView').classList.remove('is-hidden');
-    renderRoom(); setupChat();
+    renderRoom();
   } catch (error) {
     showWelcome(); showToast(error.message, true);
   }
@@ -72,10 +72,6 @@ function renderRoom() {
   const grid = $('#membersGrid'); grid.replaceChildren();
   room.members.forEach((member) => grid.append(memberCard(member)));
   grid.append(addCard());
-  const joined = Boolean(room.me);
-  $('#chatEmpty').classList.toggle('is-hidden', joined);
-  $('#messages').classList.toggle('is-hidden', !joined);
-  $('#chatForm').classList.toggle('is-hidden', !joined);
 }
 
 function avatarNode(member, className = 'avatar') {
@@ -153,40 +149,8 @@ async function saveProfile(event) {
   finally { submit.disabled = false; }
 }
 
-function setupChat() {
-  if (!state.room.me) { state.socket?.disconnect(); state.socket = null; return; }
-  if (!state.socket) {
-    state.socket = io({ auth: { token: state.token } });
-    state.socket.on('message:new', (message) => {
-      appendMessage(message);
-      if (innerWidth <= 760 && !state.mobileChatOpen) $('#unreadDot').classList.remove('is-hidden');
-    });
-    state.socket.on('member:updated', () => refreshRoomQuietly());
-  }
-  state.socket.emit('room:join', { slug: state.slug }, (result) => {
-    if (result?.error) return showToast(result.error, true);
-    const list = $('#messages'); list.replaceChildren(); result.messages.forEach(appendMessage); scrollMessages();
-  });
-}
-
 async function refreshRoomQuietly() {
   try { state.room = await api(`/api/rooms/${encodeURIComponent(state.slug)}`); renderRoom(); } catch { /* retry on next event */ }
-}
-
-function appendMessage(message) {
-  if ($(`#messages [data-id="${CSS.escape(message.id)}"]`)) return;
-  const row = el('article', 'message'); row.dataset.id = message.id;
-  const avatar = avatarNode({ display_name: message.display_name, avatar_url: message.avatar_url }, 'message-avatar');
-  const content = el('div'); const meta = el('div', 'message-meta');
-  meta.append(el('b', '', message.user_id === state.user.id ? 'من' : message.display_name), el('time', '', timeLabel(message.created_at)));
-  content.append(meta, el('p', '', message.body)); row.append(avatar, content); $('#messages').append(row); scrollMessages();
-}
-function scrollMessages() { const list = $('#messages'); requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; }); }
-
-function sendMessage(event) {
-  event.preventDefault(); const input = $('#messageInput'); const body = input.value.trim(); if (!body || !state.socket) return;
-  input.value = '';
-  state.socket.emit('message:send', { slug: state.slug, body }, (result) => { if (result?.error) { input.value = body; showToast(result.error, true); } });
 }
 
 async function createRoom(event) {
@@ -216,16 +180,14 @@ function showToast(message, error = false) {
 function openMobileChat(open) {
   state.mobileChatOpen = open; $('#chatPanel').classList.toggle('mobile-open', open);
   $('#peopleTab').classList.toggle('active', !open); $('#chatTab').classList.toggle('active', open);
-  if (open) { $('#unreadDot').classList.add('is-hidden'); scrollMessages(); }
+  if (open) $('#unreadDot').classList.add('is-hidden');
 }
 
 $('#profileForm').addEventListener('submit', saveProfile);
 $('#createRoomForm').addEventListener('submit', createRoom);
-$('#chatForm').addEventListener('submit', sendMessage);
 $('#shareButton').addEventListener('click', shareRoom);
 $('#createRoomButton').addEventListener('click', () => openModal('createModal'));
 $('#welcomeCreateButton').addEventListener('click', () => openModal('createModal'));
-$('#joinFromChat').addEventListener('click', () => openProfile(false));
 $('#profileTab').addEventListener('click', () => openProfile(Boolean(state.room?.me)));
 $('#chatTab').addEventListener('click', () => openMobileChat(true));
 $('#peopleTab').addEventListener('click', () => openMobileChat(false));
@@ -234,3 +196,4 @@ $$('[data-close]').forEach((node) => node.addEventListener('click', () => closeM
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') $$('.modal.is-open').forEach((node) => closeModal(node.id)); });
 
 boot();
+setInterval(() => { if (state.room && !$('.modal.is-open')) refreshRoomQuietly(); }, 20000);

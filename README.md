@@ -1,135 +1,140 @@
-# دیدار — Telegram Mini App MVP
+# دیدار — Telegram Mini App سرورلس
 
-«دیدار» یک Mini App واقعی برای رویدادها و مهمانی‌های کاری است. هر رویداد یک Room با لینک دعوت دارد؛ مهمان‌ها با هویت تلگرام وارد می‌شوند، پروفایل و لینک‌های اجتماعی‌شان را می‌سازند و در گفت‌وگوی عمومی زنده شرکت می‌کنند.
+«دیدار» یک Mini App فارسی برای رویدادها و مهمانی‌های کاری است. هر رویداد یک Room و لینک دعوت دارد؛ مهمان‌ها با هویت تلگرام وارد می‌شوند، پروفایل و لینک‌های اجتماعی خود را اضافه می‌کنند و افراد حاضر را می‌بینند.
 
-## امکانات آماده
+## وضعیت MVP
 
-- ورود امن با `Telegram.WebApp.initData` و اعتبارسنجی HMAC در سرور
-- ساخت Room از داخل وب‌اپ یا با دستور `/newroom` در بات
-- لینک دعوت مستقیم به Mini App با `startapp=<room-slug>`
-- پروفایل عضو شامل نام، عنوان شغلی، معرفی، تصویر، Instagram، Story و LinkedIn
-- کارت‌های دایره‌ای اعضا و دکمه `+` برای اضافه شدن
-- Public Chat زنده با Socket.IO؛ فقط اعضای همان Room امکان خواندن/نوشتن دارند
-- رابط کاملاً فارسی، RTL، واکنش‌گرا و مناسب WebView تلگرام
-- نسخه پیش‌نمایش مرورگری برای توسعه، بدون ایجاد رخنه در محیط production
-- دیتابیس SQLite با WAL و فایل پایدار؛ بدون سرویس دیتابیس جداگانه برای MVP
-- Docker، Render Blueprint، health check و تست خودکار
+- ورود امن با `Telegram.WebApp.initData`
+- ساخت Room از داخل Mini App یا دستور `/newroom` بات
+- دعوت مستقیم با `https://t.me/BOT_USERNAME?startapp=ROOM_SLUG`
+- پروفایل عضو، عنوان شغلی، معرفی، تصویر، Instagram، Story و LinkedIn
+- رابط مدرن فارسی RTL و واکنش‌گرا
+- اجرای کاملاً serverless روی Cloudflare Workers
+- دیتابیس پایدار Cloudflare D1
+- چت عمومی در UI با برچسب «به‌زودی»؛ زیرساخت real-time در این نسخه وجود ندارد
 
-## معماری MVP
+## معماری
 
 ```text
-Telegram Client / Browser
-          │
-          ├── Static RTL UI (HTML/CSS/JS)
-          ├── REST API (auth, rooms, profiles)
-          └── Socket.IO (public room chat)
-                         │
-                  Express + grammY
-                         │
-                  SQLite persistent file
+Telegram Mini App / Browser
+        │
+        ├── Static Assets ───── Cloudflare Workers Assets
+        ├── REST API ────────── Cloudflare Worker
+        ├── Telegram Webhook ── Cloudflare Worker
+        └── Rooms & Profiles ── Cloudflare D1
 ```
 
-تمام اجزا در یک سرویس Node.js اجرا می‌شوند. این مدل برای شروع، کم‌هزینه و قابل نگهداری است. برای رشد بعدی می‌توان لایه دیتابیس را به PostgreSQL و چت را به Redis Adapter منتقل و چند instance اجرا کرد.
+Worker و فایل‌های رابط با یک deploy روی شبکه Cloudflare منتشر می‌شوند. هیچ VPS، پردازش همیشه‌روشن، Docker، Socket.IO یا دیسک سروری لازم نیست.
 
 ## اجرای محلی
 
-نیازمندی: Node.js 22.5 یا جدیدتر.
+نیازمندی: Node.js جدید و npm.
 
 ```bash
-cp .env.example .env
 npm install
-npm test
+copy .dev.vars.example .dev.vars
+npm run db:migrate:local
 npm run dev
 ```
 
-سپس آدرس زیر را باز کنید:
+سپس `http://localhost:8787/r/shab-didar` را باز کنید. حالت توسعه با `ALLOW_DEV_AUTH=true` یک Room نمونه می‌سازد. این متغیر در production همیشه `false` می‌ماند.
 
-```text
-http://localhost:3000/r/shab-didar
-```
+## استقرار Cloudflare
 
-در `.env` محلی، `ALLOW_DEV_AUTH=true` است و داده نمونه ساخته می‌شود. در production این مقدار باید حتماً `false` باشد و برنامه نیز اجازه روشن بودن آن را نمی‌دهد.
-
-## متغیرهای محیطی
-
-| متغیر | کاربرد | نمونه |
-|---|---|---|
-| `APP_URL` | آدرس عمومی HTTPS | `https://didar.example.com` |
-| `BOT_TOKEN` | توکن دریافتی از BotFather | محرمانه |
-| `BOT_USERNAME` | نام کاربری بات بدون `@` | `didar_app_bot` |
-| `SESSION_SECRET` | امضای نشست، حداقل ۳۲ کاراکتر | مقدار تصادفی و محرمانه |
-| `SQLITE_PATH` | مسیر فایل دیتابیس | `/var/data/didar.db` |
-| `BOT_MODE` | `webhook` در production، `polling` در توسعه، یا `disabled` | `webhook` |
-| `TELEGRAM_WEBHOOK_SECRET` | بخش غیرقابل حدس URL وب‌هوک | مقدار تصادفی |
-| `ALLOW_DEV_AUTH` | فقط پیش‌نمایش محلی | `false` در production |
-
-در Render، اگر `APP_URL` وارد نشود برنامه به‌صورت خودکار از `RENDER_EXTERNAL_URL` استفاده می‌کند.
-
-## راه‌اندازی BotFather و Mini App
-
-1. در [@BotFather](https://t.me/BotFather) دستور `/newbot` را اجرا کنید، نام و username بدهید و `BOT_TOKEN` را ذخیره کنید.
-2. از مسیر **Bot Settings → Configure Mini App → Enable Mini App**، آدرس HTTPS استقرار را به‌عنوان Main Mini App ثبت کنید. اگر BotFather از شما short name خواست، مثلاً `didar` را انتخاب کنید.
-3. دامنه باید HTTPS معتبر داشته باشد؛ `localhost` داخل تلگرام باز نمی‌شود.
-4. متغیرهای production را تنظیم و سرویس را deploy کنید.
-5. بعد از بالا آمدن سرویس، یک بار فرمان زیر را با همان متغیرهای محیطی اجرا کنید:
-
-   ```bash
-   npm run bot:setup
-   ```
-
-   این اسکریپت commandها، دکمه منو و webhook را تنظیم می‌کند. تنظیم Main Mini App در BotFather یک مرحله دستی است.
-
-6. برای تست، بات را باز کنید و `/start` بزنید. ساخت روم از طریق `/newroom شب دیدار` یا دکمه `+` بالای وب‌اپ ممکن است.
-
-لینک دعوت تولیدشده این الگو را دارد:
-
-```text
-https://t.me/BOT_USERNAME?startapp=ROOM_SLUG
-```
-
-تلگرام `ROOM_SLUG` را در `start_param` به Mini App می‌دهد و همان Room بارگذاری می‌شود.
-شناسه Room فقط از حروف لاتین، عدد و خط تیره ساخته می‌شود تا با محدودیت deep link تلگرام سازگار بماند؛ عنوان فارسی Room بدون تغییر نمایش داده می‌شود.
-
-## استقرار روی Render
-
-فایل `render.yaml` سرویس، persistent disk و متغیرها را تعریف کرده است:
-
-1. این پوشه را در یک repository خصوصی Git قرار دهید.
-2. در Render گزینه **New Blueprint** را انتخاب و repository را متصل کنید.
-3. برای `APP_URL` آدرس نهایی Render و برای `BOT_TOKEN` و `BOT_USERNAME` مقادیر بات را وارد کنید.
-4. deploy را انجام دهید؛ سپس در Shell سرویس `npm run bot:setup` را یک بار اجرا کنید.
-5. همان `APP_URL` را در BotFather برای Main Mini App وارد کنید.
-
-دیسک persistent در Render برای نگهداری SQLite لازم است. سرویس باید یک instance داشته باشد. اگر چند instance یا ترافیک بالاتر لازم شد، مهاجرت به PostgreSQL توصیه می‌شود.
-
-اجرای مستقل با Docker نیز آماده است:
+### ۱. ورود
 
 ```bash
-docker compose up -d --build
+npx wrangler login
 ```
 
-برای production پشت reverse proxy با TLS قرار دهید.
+مرورگر برای ورود یا ساخت حساب Cloudflare باز می‌شود.
 
-## محدودیت واقعی Instagram Story
+### ۲. ساخت D1
 
-Instagram API اجازه نمی‌دهد یک اپ عمومی، استوری هر کاربر را صرفاً با username دریافت کند. دسترسی رسمی به محتوای Instagram نیازمند حساب‌ها و مجوزهای Meta و سناریوهای محدود است؛ ضمن اینکه Story معمولاً پس از ۲۴ ساعت منقضی می‌شود.
+```bash
+npx wrangler d1 create didar-db --location=weur
+```
 
-راهکار MVP دیدار این است که خود کاربر لینک Profile یا Story را paste کند. دیدار آن لینک را ذخیره و با لمس عکس در Instagram باز می‌کند. اگر Story حذف یا منقضی شده باشد، خود Instagram خطا نشان می‌دهد؛ کاربر می‌تواند لینک را از ویرایش پروفایل پاک یا جایگزین کند. هیچ scraping یا دور زدن API انجام نمی‌شود.
+شناسه `database_id` خروجی را جایگزین مقدار صفر در `wrangler.jsonc` کنید.
 
-## امنیت و حریم خصوصی
+### ۳. اجرای migration
 
-- داده `initDataUnsafe` برای احراز هویت استفاده نمی‌شود؛ رشته خام `initData` با توکن بات در سرور اعتبارسنجی می‌شود.
-- نشست‌ها امضاشده و دارای انقضای ۷ روزه‌اند.
-- متن پیام و داده پروفایل محدودیت طول و URLها محدودیت دامنه دارند.
-- چت تنها پس از عضویت در Room قابل دسترسی است.
-- توکن بات و secretها نباید وارد Git شوند.
-- لینک‌های اجتماعی برای هر کاربری که لینک دعوت Room را دارد و با تلگرام وارد شده قابل مشاهده‌اند؛ این موضوع باید در سیاست حریم خصوصی نسخه عمومی ذکر شود.
+```bash
+npm run db:migrate
+```
 
-## تست و پایش
+### ۴. ثبت secretها
+
+```bash
+npx wrangler secret put BOT_TOKEN
+npx wrangler secret put BOT_USERNAME
+npx wrangler secret put SESSION_SECRET
+npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
+```
+
+`SESSION_SECRET` باید حداقل ۳۲ کاراکتر تصادفی باشد. `TELEGRAM_WEBHOOK_SECRET` نیز یک مقدار تصادفی و غیرقابل حدس است. secretها هرگز در Git ذخیره نمی‌شوند.
+
+### ۵. انتشار
+
+```bash
+npm run deploy
+```
+
+خروجی، آدرسی شبیه زیر خواهد بود:
+
+```text
+https://didar-mini-app.YOUR_SUBDOMAIN.workers.dev
+```
+
+اگر دامنه اختصاصی ندارید همان `workers.dev` برای Telegram Mini App قابل استفاده است.
+
+## اتصال بات و BotFather
+
+بعد از deploy، `.env.example` را به `.env` کپی و `APP_URL`، `BOT_TOKEN`، `BOT_USERNAME` و `TELEGRAM_WEBHOOK_SECRET` را فقط روی سیستم محلی مقداردهی کنید. سپس:
+
+```bash
+npm run bot:setup
+```
+
+این دستور commandهای بات، دکمه منو و webhook را تنظیم می‌کند.
+
+در [@BotFather](https://t.me/BotFather):
+
+1. از **Bot Settings → Configure Mini App**، آدرس `workers.dev` را به‌عنوان Main Mini App ثبت کنید.
+2. اگر short name خواسته شد، `didar` را انتخاب کنید.
+3. برای تست `/start` و برای ساخت Room دستور `/newroom شب دیدار` را بفرستید.
+
+## متغیرهای Worker
+
+| متغیر | نوع | کاربرد |
+|---|---|---|
+| `BOT_TOKEN` | Secret | توکن بات |
+| `BOT_USERNAME` | Secret | username بات بدون `@` |
+| `SESSION_SECRET` | Secret | امضای نشست‌های دیدار |
+| `TELEGRAM_WEBHOOK_SECRET` | Secret | محافظت از مسیر webhook |
+| `APP_URL` | اختیاری | دامنه اختصاصی؛ در حالت عادی origin خود Worker استفاده می‌شود |
+| `ALLOW_DEV_AUTH` | عادی | فقط توسعه محلی؛ production برابر `false` |
+
+## محدودیت Instagram Story
+
+Instagram اجازه دریافت خودکار Story همه کاربران را صرفاً با username نمی‌دهد و Story نیز معمولاً موقت است. در MVP کاربر لینک Profile یا Story را خودش وارد می‌کند. دیدار لینک را ذخیره و با لمس تصویر در Instagram باز می‌کند؛ هیچ scraping انجام نمی‌شود.
+
+## چت
+
+نسخه فعلی هیچ پیام چتی ذخیره یا پردازش نمی‌کند و پنل آن با عبارت «به‌زودی» نمایش داده می‌شود. در نسخه بعد می‌توان چت real-time را با Cloudflare Durable Objects اضافه کرد، بدون بازگرداندن سرور سنتی.
+
+## امنیت
+
+- رشته خام `initData` در Worker با HMAC رسمی تلگرام اعتبارسنجی می‌شود.
+- نشست‌ها امضاشده و دارای انقضای هفت‌روزه‌اند.
+- URLهای Instagram و LinkedIn محدود به دامنه‌های مربوطه‌اند.
+- D1 با binding داخلی Worker در دسترس است و credential دیتابیس در مرورگر قرار نمی‌گیرد.
+- `BOT_TOKEN` و secretها نباید در Git یا گفتگوها قرار گیرند.
+
+## تست
 
 ```bash
 npm test
-curl https://YOUR-DOMAIN/health
 ```
 
-تست‌ها امضای Telegram، دستکاری و انقضای init data، نشست، ساخت Room، عضویت و پیام را پوشش می‌دهند.
+تست‌ها اعتبارسنجی Telegram، رد داده دستکاری‌شده یا منقضی، نشست و slug امن برای deep link را پوشش می‌دهند.

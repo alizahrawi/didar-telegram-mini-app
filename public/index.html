@@ -11,7 +11,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
-  <script src="/socket.io/socket.io.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -73,25 +72,19 @@
             <span class="chat-icon">
               <svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/></svg>
             </span>
-            <div><b>گفت‌وگوی عمومی</b><small><i></i> آنلاین و زنده</small></div>
+            <div><b>گفت‌وگوی عمومی</b><small><i></i> نسخه بعدی دیدار</small></div>
           </div>
           <button id="closeChat" class="icon-button mobile-only" aria-label="بستن چت">
             <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
           </button>
         </div>
-        <div id="chatEmpty" class="chat-locked is-hidden">
-          <span>✦</span>
-          <h3>به جمع اضافه شو</h3>
-          <p>برای دیدن پیام‌ها و شرکت در گفت‌وگو، اول پروفایلت را بساز.</p>
-          <button id="joinFromChat" class="primary-button">اضافه کردن خودم</button>
+        <div class="chat-coming-soon">
+          <div class="coming-orbit"><span>✦</span></div>
+          <span class="coming-badge">به‌زودی</span>
+          <h3>گفت‌وگو در راه است</h3>
+          <p>در نسخه بعدی می‌توانی با آدم‌های همین روم گفت‌وگو کنی و ارتباط تازه‌ای بسازی.</p>
+          <div class="coming-features"><span>پیام عمومی</span><i></i><span>اعلان زنده</span><i></i><span>ریپلای</span></div>
         </div>
-        <div id="messages" class="messages"></div>
-        <form id="chatForm" class="chat-form">
-          <input id="messageInput" maxlength="500" autocomplete="off" placeholder="پیامت را بنویس…">
-          <button type="submit" aria-label="ارسال پیام">
-            <svg viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-          </button>
-        </form>
       </aside>
     </main>
 
