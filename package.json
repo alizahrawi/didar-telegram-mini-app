@@ -1,0 +1,25 @@
+{
+  "name": "didar-telegram-mini-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "دیدار — Telegram Mini App for professional event rooms",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test",
+    "bot:setup": "node scripts/setup-telegram.mjs"
+  },
+  "dependencies": {
+    "compression": "^1.8.1",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "grammy": "^1.38.3",
+    "helmet": "^8.1.0",
+    "socket.io": "^4.8.1",
+    "zod": "^4.1.12"
+  }
+}
