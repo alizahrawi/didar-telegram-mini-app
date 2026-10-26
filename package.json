@@ -17,6 +17,6 @@
     "dotenv": "^17.2.3"
   },
   "devDependencies": {
-    "wrangler": "^4.40.3"
+    "wrangler": "^4.152.0"
   }
 }
